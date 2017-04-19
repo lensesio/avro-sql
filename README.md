@@ -1,4 +1,6 @@
-# avro-sql
+[![Build Status](https://travis-ci.org/Landoop/avro-sql.svg?branch=master)](https://travis-ci.org/Landoop/avro-sql) [<img src="https://img.shields.io/maven-central/v/com.landoop/avro-sql*.svg?label=latest%20release"/>](http://search.maven.org/#search|ga|1|avro-sql) [![GitHub license](https://img.shields.io/github/license/Landoop/avro-sql.svg)]()
+# Avro-Sql
+
 This is a library allowing to transform the shape of an Avro record using SQL.
 It relies on **Apache Calcite** for the SQL parsing.
 
