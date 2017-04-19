@@ -7,8 +7,11 @@ jdk:
 
 sudo: false
 
-script: gradle clean build
+script:
+ - chmod +x gradlew
+ - ./gradlew clean build
+
 cache:
   directories:
-    - $HOME/.gradle/
-    - .gradle/
+   - $HOME/.gradle/caches/
+   - $HOME/.gradle/wrapper/
