@@ -1,17 +1,23 @@
 language: scala
 scala:
-- 2.11.8
+  - 2.11.8
 
 jdk:
-- oraclejdk8
+  - oraclejdk8
 
-sudo: true
+# sudo: true
+
+# Enable if you want to use gradlew
+before_install:
+  - chmod +x gradlew
+
+# If you omit install, travis will always run gradle assemble
+install: echo "skip 'gradle assembly'"
 
 script:
- - chmod +x gradlew
  - ./gradlew clean build
 
 cache:
   directories:
-   - $HOME/.gradle/caches/
-   - $HOME/.gradle/wrapper/
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
