@@ -25,7 +25,7 @@ import org.apache.avro.generic.{GenericContainer, GenericData, IndexedRecord}
 import org.apache.avro.util.Utf8
 import org.apache.calcite.sql.SqlSelect
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Success, Try}
 
@@ -176,7 +176,7 @@ object AvroSql extends AvroFieldValueGetter {
                                parents: Seq[String])(implicit sqlContext: SqlContext): Any = {
       value match {
         case c: java.util.Collection[_] =>
-          c.foldLeft(new java.util.ArrayList[Any](c.size())) { (acc, e) =>
+          c.asScala.foldLeft(new java.util.ArrayList[Any](c.size())) { (acc, e) =>
             acc.add(from(e, schema.getElementType, targetSchema.getElementType, parents))
             acc
           }
@@ -196,7 +196,7 @@ object AvroSql extends AvroFieldValueGetter {
           case Left(field) if field.name == "*" =>
             val filteredFields = fields.collect { case Left(f) if f.name != "*" => f.name }.toSet
 
-            schema.getFields
+            schema.getFields.asScala
               .withFilter(f => !filteredFields.contains(f.name()))
               .map { f =>
                 val sourceField = Option(schema.getField(f.name))
@@ -224,10 +224,10 @@ object AvroSql extends AvroFieldValueGetter {
 
         }
       }.getOrElse {
-        targetSchema.getFields
+        targetSchema.getFields.asScala
           .map { f =>
             val sourceField = Option(schema.getField(f.name))
-              .getOrElse(throw new IllegalArgumentException(s"Can't find the field ${f.name} in ${schema.getFields.map(_.name()).mkString(",")}"))
+              .getOrElse(throw new IllegalArgumentException(s"Can't find the field ${f.name} in ${schema.getFields.asScala.map(_.name()).mkString(",")}"))
             sourceField -> f
           }
       }
@@ -252,7 +252,7 @@ object AvroSql extends AvroFieldValueGetter {
         val fields = sqlContext.getFieldsForPath(parents)
         val initialMap = {
           if (fields.exists(f => f.isLeft && f.left.get.name == "*")) {
-            map.keySet().map(k => k.toString -> k.toString).toMap
+            map.keySet().asScala.map(k => k.toString -> k.toString).toMap
           } else {
             Map.empty[String, String]
           }
@@ -265,7 +265,7 @@ object AvroSql extends AvroFieldValueGetter {
               case (m, Right(f)) => m + (f -> f)
             }
         }
-          .getOrElse(map.keySet().map(k => k.toString -> k.toString).toMap)
+          .getOrElse(map.keySet().asScala.map(k => k.toString -> k.toString).toMap)
           .foreach { case (key, alias) =>
             Option(map.get(key)).foreach { v =>
               newMap.put(
