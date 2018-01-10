@@ -28,20 +28,20 @@ allprojects {
     targetCompatibility = 1.8
 
     ext {
-        scalaMajorVersion = '2.11'
-        scala = '2.11.8'
-        scalaCheck = '1.11.1'
-        scalaTest = '2.2.6'
-        junitVersion = '4.12'
+        scalaMajorVersion = "2.12"
+        scala = "2.12.3"
+        scalaCheck = "1.13.5"
+        scalaTest = "3.0.4"
+        junitVersion = "4.12"
         calciteVersion = "1.12.0"
-        kafkaVersion = '1.0.0'
-        confluentVersion = '4.0.0'
-        scalaLoggingVersion = '3.5.0'
-        mockitoVersion = '2.7.13'
-        avroVersion = '1.8.1'
-        avro4sVersion = "1.6.2"
+        kafkaVersion = "1.0.0"
+        confluentVersion = "4.0.0"
+        scalaLoggingVersion = "3.5.0"
+        mockitoVersion = "2.7.13"
+        avroVersion = "1.8.1"
+        avro4sVersion = "1.6.4"
         slf4jVersion = "1.7.7"
-        sqlCore="1.0"
+        sqlCore="2.0"
     }
 
     repositories {
@@ -59,14 +59,13 @@ allprojects {
     dependencies {
         compile "org.scala-lang:scala-library:$scala"
         compile "com.typesafe.scala-logging:scala-logging_$scalaMajorVersion:$scalaLoggingVersion"
-
-        compile ("com.landoop:sql-core_$scalaMajorVersion:$sqlCore")
-        provided "org.apache.avro:avro:$avroVersion"
+        compile ("com.landoop:sql-core:$sqlCore")
         compile "io.confluent:kafka-avro-serializer:${confluentVersion}"
-        //provided "org.apache.kafka:kafka_$scalaMajorVersion:${kafkaVersion}"
-        provided "org.apache.kafka:connect-api:${kafkaVersion}"
         compile "com.sksamuel.avro4s:avro4s-core_$scalaMajorVersion:$avro4sVersion"
         compile("org.apache.calcite:calcite-core:$calciteVersion")
+
+        provided "org.apache.avro:avro:$avroVersion"
+        provided "org.apache.kafka:connect-api:${kafkaVersion}"
 
         testCompile "org.mockito:mockito-core:$mockitoVersion"
         testCompile "org.scalacheck:scalacheck_$scalaMajorVersion:$scalaCheck"

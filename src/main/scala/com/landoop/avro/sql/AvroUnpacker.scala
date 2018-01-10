@@ -23,7 +23,7 @@ import org.apache.avro.Conversions.{DecimalConversion, UUIDConversion}
 import org.apache.avro.generic.{GenericFixed, IndexedRecord}
 import org.apache.avro.{LogicalTypes, Schema}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.{Map => MutableMap}
 
 object AvroUnpacker {
@@ -38,9 +38,7 @@ object AvroUnpacker {
   private val UUID = "uuid"
   private val DATE = "date"
   private val TIME_MILLIS = "time-millis"
-  private val TIME_MICROS = "time-micros"
   private val TIMESTAMP_MILLIS = "timestamp-millis"
-  private val TIMESTAMP_MICROS = "timestamp-micros"
 
   def fromBytes(value: Any)(implicit schema: Schema): Any = {
     val bytes = value match {
@@ -61,7 +59,7 @@ object AvroUnpacker {
 
   def fromArray(value: Any)(implicit schema: Schema): Any = {
     value match {
-      case c: java.util.Collection[_] => c.map(apply(_, schema.getElementType))
+      case c: java.util.Collection[_] => c.asScala.map(apply(_, schema.getElementType))
       case arr: Array[_] if arr.getClass.getComponentType.isPrimitive => arr
       case arr: Array[_] => arr.map(apply(_, schema.getElementType))
       case other => throw new IllegalArgumentException(s"Unknown ARRAY type ${other.getClass.getName}")
@@ -69,7 +67,7 @@ object AvroUnpacker {
   }
 
   def fromMap(value: Any)(implicit schema: Schema): Any = {
-    value.asInstanceOf[java.util.Map[_, _]].foldLeft(Map.empty[String, Any]) { case (map, (key, v)) =>
+    value.asInstanceOf[java.util.Map[_, _]].asScala.foldLeft(Map.empty[String, Any]) { case (map, (key, v)) =>
       map + (key.toString -> apply(v, schema.getValueType))
     }
   }
@@ -77,7 +75,7 @@ object AvroUnpacker {
   def fromRecord(value: Any)(implicit schema: Schema): Any = {
     value match {
       case record: IndexedRecord =>
-        record.getSchema.getFields
+        record.getSchema.getFields.asScala
           .zipWithIndex
           .foldLeft(MutableMap.empty[String, Any]) { case (map, (f, i)) =>
             map + (f.name -> apply(record.get(i), f.schema))
@@ -87,7 +85,7 @@ object AvroUnpacker {
   }
 
   def fromUnion(value: Any)(implicit schema: Schema): Any = {
-    schema.getTypes.toList match {
+    schema.getTypes.asScala.toList match {
       case actualSchema +: Nil => apply(value, actualSchema)
       case List(n, actualSchema) if n.getType == Schema.Type.NULL => apply(value, actualSchema)
       case List(actualSchema, n) if n.getType == Schema.Type.NULL => apply(value, actualSchema)

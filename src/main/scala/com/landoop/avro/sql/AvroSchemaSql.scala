@@ -22,7 +22,7 @@ import org.apache.avro.Schema.{Field => AvroField}
 import org.apache.calcite.sql.SqlSelect
 
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 object AvroSchemaSql {
@@ -31,14 +31,14 @@ object AvroSchemaSql {
 
     def isNullable(): Boolean = {
       schema.getType == Schema.Type.UNION &&
-        schema.getTypes.exists(_.getType == Schema.Type.NULL)
+        schema.getTypes.asScala.exists(_.getType == Schema.Type.NULL)
     }
 
     /**
       * This assumes a null, type union. probably better to look at the value and work out the schema
       */
     def fromUnion(): Schema = {
-      schema.getTypes.toList match {
+      schema.getTypes.asScala.toList match {
         case actualSchema +: Nil => actualSchema
         case List(n, actualSchema) if n.getType == Schema.Type.NULL => actualSchema
         case List(actualSchema, n) if n.getType == Schema.Type.NULL => actualSchema
@@ -50,7 +50,7 @@ object AvroSchemaSql {
       def navigate(current: Schema, parents: Seq[String]): Seq[AvroField] = {
         if (Option(parents).isEmpty || parents.isEmpty) {
           current.getType match {
-            case Schema.Type.RECORD => current.getFields
+            case Schema.Type.RECORD => current.getFields.asScala
             case Schema.Type.UNION => navigate(current.fromUnion(), parents)
             case Schema.Type.MAP => throw new IllegalArgumentException(s"Can't select fields ${path.mkString(".")} since it resolved to a Map($current)")
             case _ => throw new IllegalArgumentException(s"Can't select fields ${path.mkString(".")} from schema:$current ")
@@ -95,7 +95,7 @@ object AvroSchemaSql {
             schema
           }
           else {
-            val newSchema = Schema.createUnion(Schema.create(Schema.Type.NULL) +: schema.getTypes)
+            val newSchema = Schema.createUnion((Schema.create(Schema.Type.NULL) +: schema.getTypes.asScala).asJava)
             newSchema.copyProperties(schema)
           }
         case _ => Schema.createUnion(Schema.create(Schema.Type.NULL), schema)
@@ -131,10 +131,10 @@ object AvroSchemaSql {
     private[sql] def copyProperties(from: Schema): Schema = {
       from.getType match {
         case Schema.Type.RECORD | Schema.Type.FIXED | Schema.Type.ENUM =>
-          from.getAliases.foreach(schema.addAlias)
+          from.getAliases.asScala.foreach(schema.addAlias)
         case _ =>
       }
-      from.getObjectProps.foreach { case (prop: String, value: Any) =>
+      from.getObjectProps.asScala.foreach { case (prop: String, value: Any) =>
         schema.addProp(prop, value)
       }
       schema
@@ -186,15 +186,15 @@ object AvroSchemaSql {
                   val underlyingSchema = s.fromUnion()
                   underlyingSchema.getType match {
                     case Schema.Type.RECORD =>
-                      if (!underlyingSchema.isNullable()) underlyingSchema.getFields.toSeq
-                      else underlyingSchema.getFields.map { f =>
+                      if (!underlyingSchema.isNullable()) underlyingSchema.getFields.asScala
+                      else underlyingSchema.getFields.asScala.map { f =>
                         new AvroField(f.name(), f.schema().copyAsNullable, f.doc(), f.defaultVal())
                       }
                     case other => throw new IllegalArgumentException(s"Field selection ${p.mkString(".")} resolves to schema type:$other. Only RECORD type is allowed")
                   }
                 case Schema.Type.RECORD =>
-                  if (!s.isNullable()) s.getFields.toSeq
-                  else s.getFields.map { f =>
+                  if (!s.isNullable()) s.getFields.asScala
+                  else s.getFields.asScala.map { f =>
                     new AvroField(f.name(), f.schema().copyAsNullable, f.doc(), f.defaultVal())
                   }
                 case other =>
@@ -202,8 +202,8 @@ object AvroSchemaSql {
               }
             }
             .getOrElse {
-              if (!schema.isNullable) schema.getFields.toSeq
-              else schema.getFields.map { f =>
+              if (!schema.isNullable) schema.getFields.asScala
+              else schema.getFields.asScala.map { f =>
                 new AvroField(f.name(), f.schema().copyAsNullable, f.doc(), f.defaultVal())
               }
             }
@@ -235,7 +235,7 @@ object AvroSchemaSql {
       }
 
 
-      newSchema.setFields(newFields)
+      newSchema.setFields(newFields.asJava)
       newSchema.copyProperties(schema)
     }
   }
@@ -253,7 +253,7 @@ object AvroSchemaSql {
           newSchema.copyProperties(from)
 
         case Schema.Type.UNION =>
-          val newSchema = Schema.createUnion(from.getTypes.map(copy(_, parents)))
+          val newSchema = Schema.createUnion(from.getTypes.asScala.map(copy(_, parents)).asJava)
           newSchema.copyProperties(from)
 
         case _ => from
@@ -267,25 +267,25 @@ object AvroSchemaSql {
       val fields = sqlContext.getFieldsForPath(parents)
       val newFields: Seq[Schema.Field] = fields match {
         case Seq() =>
-          from.getFields
+          from.getFields.asScala
             .map { schemaField =>
               val newSchema = copy(schemaField.schema(), parents :+ schemaField.name)
               val newField = new org.apache.avro.Schema.Field(schemaField.name, newSchema, schemaField.doc(), schemaField.defaultVal())
-              schemaField.aliases().foreach(newField.addAlias)
+              schemaField.aliases().asScala.foreach(newField.addAlias)
               newField
             }
 
         case Seq(Left(f)) if f.name == "*" =>
-          from.getFields.map { schemaField =>
+          from.getFields.asScala.map { schemaField =>
             val newSchema = copy(schemaField.schema(), parents :+ schemaField.name)
             val newField = new org.apache.avro.Schema.Field(schemaField.name, newSchema, schemaField.doc(), schemaField.defaultVal())
-            schemaField.aliases().foreach(newField.addAlias)
+            schemaField.aliases().asScala.foreach(newField.addAlias)
             newField
           }
         case other =>
           fields.flatMap {
             case Left(field) if field.name == "*" =>
-              from.getFields
+              from.getFields.asScala
                 .withFilter(f => !fields.exists(e => e.isLeft && e.left.get.name == f.name))
                 .map { f =>
                   val newSchema = copy(f.schema(), parents :+ f.name)
@@ -312,7 +312,7 @@ object AvroSchemaSql {
           }
       }
 
-      newSchema.setFields(newFields)
+      newSchema.setFields(newFields.asJava)
       newSchema.copyProperties(from)
     }
 
@@ -326,15 +326,15 @@ object AvroSchemaSql {
         case Seq(field) if field == "*" =>
           from.getType match {
             case Schema.Type.RECORD =>
-              if (!isOptional) from.getFields.toSeq
-              else from.getFields.map(asNullable)
+              if (!isOptional) from.getFields.asScala
+              else from.getFields.asScala.map(asNullable)
 
             case Schema.Type.UNION =>
               val underlyingSchema = from.fromUnion()
               underlyingSchema.getType match {
                 case Schema.Type.RECORD =>
-                  if (!isOptional) underlyingSchema.getFields.toSeq
-                  else underlyingSchema.getFields.map(asNullable)
+                  if (!isOptional) underlyingSchema.getFields.asScala
+                  else underlyingSchema.getFields.asScala.map(asNullable)
 
                 case other => throw new IllegalArgumentException(s"Can't select field:$field from ${other.toString}")
               }
@@ -350,8 +350,8 @@ object AvroSchemaSql {
               val underlyingSchema = from.fromUnion()
               underlyingSchema.getType match {
                 case Schema.Type.RECORD =>
-                  if (!isOptional) underlyingSchema.getFields.toSeq
-                  else underlyingSchema.getFields.map(asNullable)
+                  if (!isOptional) underlyingSchema.getFields.asScala
+                  else underlyingSchema.getFields.asScala.map(asNullable)
 
                 case other => throw new IllegalArgumentException(s"Can't select field:$field from ${other.toString}")
               }
